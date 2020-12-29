@@ -1,0 +1,97 @@
+for level03 we have a program that ask for a password , we can see with at this line 
+   0x080488b1 <+87>:	mov    $0x8048a85,%eax
+
+that the program ask for a number 
+(gdb)x/s 0x8048a85
+	0x8048a85:	 "%d"
+
+
+after, the program call does this : 
+   0x080488ca <+112>:	movl   $0x1337d00d,0x4(%esp)
+
+and then call function decrypt
+
+we can see this comparison
+   0x0804875c <+21>:	cmpl   $0x15,-0xc(%ebp)
+
+so the algorithm is going to continue only if the number input is not higher than 322424845
+or under 322424845 - 21 (0x15)
+
+so we assume our password will be between these value 
+
+then it will call the fucntion test 
+
+   0x08048673 <+19>:	movl   $0x757c7d51,-0x1d(%ebp)
+   0x0804867a <+26>:	movl   $0x67667360,-0x19(%ebp)
+   0x08048681 <+33>:	movl   $0x7b66737e,-0x15(%ebp)
+   0x08048688 <+40>:	movl   $0x33617c7d,-0x11(%ebp)
+   0x0804868f <+47>:	movb   $0x0,-0xd(%ebp)
+
+
+we have these instruction we can clearly see that the 0x...... is corresponding to ascii values
+
+after reversing the bits to big endian we convert to ascci and we have the string 
+"Q}|u`sfg~sf{}|a3"
+
+the the function test perform a xor 
+   0x0804868f <+47>:	movb   $0x0,-0xd(%ebp)
+   0x08048693 <+51>:	push   %eax
+   0x08048694 <+52>:	xor    %eax,%eax
+
+we assume it xor the string with our input 
+
+then the algorithm keep going and we have 
+
+   0x080486f2 <+146>:	mov    $0x80489c3,%eax
+   0x080486f7 <+151>:	mov    $0x11,%ecx
+   0x080486fc <+156>:	mov    %edx,%esi
+   0x080486fe <+158>:	mov    %eax,%edi
+   0x08048700 <+160>:	repz cmpsb %es:(%edi),%ds:(%esi)
+   0x08048702 <+162>:	seta   %dl
+   0x08048705 <+165>:	setb   %al
+   0x08048708 <+168>:	mov    %edx,%ecx
+   0x0804870a <+170>:	sub    %al,%cl
+   0x0804870c <+172>:	mov    %ecx,%eax
+0x0804870e <+174>:	movsbl %al,%eax
+   0x08048711 <+177>:	test   %eax,%eax
+   0x08048713 <+179>:	jne    0x8048723 <decrypt+195>
+   0x08048715 <+181>:	movl   $0x80489d4,(%esp)
+   0x0804871c <+188>:	call   0x80484e0 <system@plt>
+
+
+(gdb) x/s 0x80489c3
+0x80489c3:	 "Congratulations!"
+
+if the xor between our input an the string has "Congratulations!" as result it will open us a shell
+
+
+so our exploit will be 
+
+level03@OverRide:~$ for i in {322424824..322424845} ; do (echo $i ; cat) | ./level03 ; done
+***********************************
+*		level03		**
+***********************************
+Password:
+Invalid Password
+
+***********************************
+*		level03		**
+***********************************
+Password:
+Invalid Password
+
+***********************************
+*		level03		**
+***********************************
+Password:
+Invalid Password
+
+***********************************
+*		level03		**
+***********************************
+
+cd ../level04
+cat .pass
+kgv3tkEb9h2mLkRsPkXRfc2mHbjMxQzvb2FrgKkf
+
+

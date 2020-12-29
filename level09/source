@@ -1,0 +1,62 @@
+struct      msg {
+    char    msg[140];
+    char    username[40];
+    int     msglen;
+}           save;
+
+struct msg save;
+
+void secret_backdoor(void) {
+    char cmd[128];
+
+    fgets(cmd, 128, stdin);
+    system(cmd);
+
+    return;
+}
+
+void set_username(struct msg *save) {
+    int i;
+    char buf[128];
+    memset(buf, 0, 128);
+
+    printf(">: Enter your username\n");
+    printf(">>: ");
+
+    fgets(buf, 128, stdin);
+    for(i = 0; i <= 40 && buf[i]; i++)
+        save->username[i] = buf[i];
+    printf(">: Welcome, %s", save->username);
+    return;
+}
+
+void set_msg(struct msg *save) {
+    char readbuf[1024];
+    memset(readbuf, 0, 1024);
+
+    printf(">: Msg @Unix-Dude\n");
+    printf(">>: ");
+    fgets(readbuf, 1024, stdin);
+    strncpy(save->msg, readbuf, save->msglen);
+}
+
+void handle_msg(void)
+{
+	struct msg save;
+	memset(save.username, 0, 40);
+	save.msglen = 140;
+	set_username(&save);
+	set_msg(&save);
+	printf(">: Msg sent!\n");
+}
+
+int main(void)
+
+{
+  puts(
+      "--------------------------------------------\n|   ~Welcome to l33t-m$n ~    v1337       |\n--------------------------------------------"
+      );
+  handle_msg();
+  return 0;
+}
+

